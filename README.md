@@ -20,6 +20,20 @@ Replace `yourtoken` on `const token = 'yourtoken';` with your Telgram bot token.
 
 Replace `yourchatid` on `const chatid = 'yourchatid';` with your group/channel the bot will notify into. [How to get chatid](https://stackoverflow.com/questions/32423837/telegram-bot-how-to-get-a-group-chat-id)
 
+```
+1- Add the bot to the group.
+Go to the group, click on group name, click on Add members, in the searchbox search for your bot like this: @my_bot, select your bot and click add.
+
+2- Send a dummy message to the bot.
+You can use this example: /my_id @my_bot
+(I tried a few messages, not all the messages work. The example above works fine. Maybe the message should start with /)
+
+3- Go to following url: https://api.telegram.org/botXXX:YYYY/getUpdates
+replace XXX:YYYY with your bot token
+
+4- Look for "chat":{"id":-zzzzzzzzzz,
+-zzzzzzzzzz is your chat id (with the negative sign). 
+```
 
 Run `node yourchoiceofscript.js` preferably inside screen/tmux window
 
