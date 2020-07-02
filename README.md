@@ -7,7 +7,7 @@ Current demo is https://t.me/jsforumnotification
 ## Getting Started
 ### Requirements
 
-[Joystream Node](https://github.com/Joystream/helpdesk/tree/master/roles/validators#instructions)
+[Joystream Node](https://github.com/Joystream/helpdesk/tree/master/roles/validators#instructions)\
 [Yarn and Nodejs](https://github.com/Joystream/helpdesk/tree/master/roles/storage-providers#install-yarn-and-node-on-linux)
 
 ### Run
@@ -16,7 +16,7 @@ Current demo is https://t.me/jsforumnotification
    cd joystreamtelegrambot
    yarn install
    ```
-Replace `yourtoken` on `const token = 'yourtoken';` with your Telgram bot token. You can get it by talking to @botfather \
+Replace `yourtoken` on `const token = 'yourtoken';` with your Telgram bot token. You can get it by talking to @botfather 
 
 Replace `yourchatid` on `const chatid = 'yourchatid';` with your group/channel the bot will notify into. [How to get chatid](https://stackoverflow.com/questions/32423837/telegram-bot-how-to-get-a-group-chat-id)
 
