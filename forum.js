@@ -93,8 +93,8 @@ async function main () {
 	});
 }
 
-const getcategoryTitle = async (api,lastcatnotif,currentcategory) => {
-    const category = await api.query.forum.categoryById(lastcatnotif,currentcategory)
+const getcategoryTitle = async (api, categoryid) => {
+    const category = await api.query.forum.categoryById(categoryid)
 	const categorytitle = category.title
 	return categorytitle
 }
