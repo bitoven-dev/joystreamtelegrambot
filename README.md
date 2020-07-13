@@ -16,9 +16,9 @@ Current demo is https://t.me/jsforumnotification
    cd joystreamtelegrambot
    yarn install
    ```
-Replace `yourtoken` on `const token = 'yourtoken';` with your Telgram bot token. You can get it by talking to @botfather 
+Replace `yourowntoken` on `const token = 'yourtoken';` with your Telgram bot token. You can get it by talking to @botfather 
 
-Replace `yourchatid` on `const chatid = 'yourchatid';` with your group/channel the bot will notify into. [How to get chatid](https://stackoverflow.com/questions/32423837/telegram-bot-how-to-get-a-group-chat-id)
+Replace `yourownchat` on `const chatid = 'yourchatid';` with your group/channel the bot will notify into. [How to get chatid](https://stackoverflow.com/questions/32423837/telegram-bot-how-to-get-a-group-chat-id)
 
 ```
 1- Add the bot to the group.
@@ -42,4 +42,4 @@ Run `node yourchoiceofscript.js` preferably inside screen/tmux window
 
 ### Notes
 
-I've just started to learn programming (JS), so any suggestion or PR is greatly appreciated 😁
+I've just started to learn programming (JS), so any suggestions or PR is greatly appreciated 😁
