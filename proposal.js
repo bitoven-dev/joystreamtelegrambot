@@ -14,66 +14,64 @@ async function main () {
         provider: new WsProvider() 
     })
     
-    let proposalcount = await api.query.proposalsEngine.proposalCount()   
-    let createdproposal = []
+    let proposalcount = (await api.query.proposalsEngine.proposalCount()).toNumber()   
+    // let createdproposal = []
+    let createdproposal = (await api.query.proposalsEngine.activeProposalIds())[0]
+    let filteredproposal
     let tobeexecutedprop = []
+    let tobeexecutedpropfiltered
+   
     const unsubscribe = await api.rpc.chain.subscribeNewHeads(async (header) => {
         const block = header.number.toNumber()
         
-        const currentproposal = await api.query.proposalsEngine.proposalCount()
+        const currentproposal = (await api.query.proposalsEngine.proposalCount()).toNumber()
         console.log(`Current proposal count: ${currentproposal}`)
+        console.log(`Current active proposal : ${createdproposal}`)
         if (currentproposal>proposalcount) {
             for (proposalcount+1;proposalcount<currentproposal;proposalcount++) {
                 const proposal = await getproposalDetail(api,proposalcount+1)
                 const propcreatedtime = proposal.detail().createdAt.toJSON()
-                createdproposal.push(proposalcount+1)
+
                 console.log(`New proposal (${proposalcount+1}) created at block ${propcreatedtime}.\r\n ${proposal.postmessage()}`)
                 bot.sendMessage(chatid, `New proposal (${proposalcount+1}) created at block ${propcreatedtime}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
+                createdproposal.push(proposalcount+1)
             }            
         }
 
         if (createdproposal.length>0) {
             for (const proposallist of createdproposal){
                 const proposal = await getproposalDetail(api,proposallist)
-                let propstage = proposal.stage()
-                if (propstage='Finalized'){
+                let propstage = proposal.stage()[0]
+                if (propstage == 'Finalized') {
                     const propstatus = proposal.resultjson()
                     switch (propstatus[0]){
                         case 'Approved':
                             let graceperiod = proposal.graceperiod()
                             if (graceperiod>0) {
                                 bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to "Finalized" at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                                createdproposal.pop(proposallist)
+                                filteredproposal = createdproposal.filter(e => e != proposallist)
                                 tobeexecutedprop.push(proposallist)
                             } else {
                                 bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to "Finalized and Executed" at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                                createdproposal.pop(proposallist)
+                                filteredproposal = createdproposal.filter(e => e != proposallist)
                             }
                             break;
                         case 'Expired':
-                            console.log(`Proposal ${proposallist} expired`)
-                            bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to <b>"Finalized:Expired"</b> at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                            createdproposal.pop(proposallist)
-                            break;
-                        case 'Cancelled':
-                            console.log(`Proposal ${proposallist} Cancelled`)
-                            bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to <b>"Finalized:Cancelled"</b> at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                            createdproposal.pop(proposallist)
-                            break;
+                        case 'Canceled':
                         case 'Rejected':
-                            console.log(`Proposal ${proposallist} Rejected`)
-                            bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to <b>"Finalized:Rejected"</b> at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                            createdproposal.pop(proposallist)
-                            break;
                         case 'Slashed':
-                            console.log(`Proposal ${proposallist} Slashed`)
-                            bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to <b>"Finalized:Slashed"</b> at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                            createdproposal.pop(proposallist)
-                            break;
+                        case 'Vetoed':
+                            // console.log(`Proposal ${proposallist} ${propstatus[0]}`)
+                            // bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to <b>"Finalized:${propstatus[0]}"</b> at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
+                            // filteredproposal = createdproposal.filter(e => e != proposallist)
+                            // break;
                         default:
-                            console.log('other status:',propstatus[0])
+                            console.log(`Proposal ${proposallist} changed to other status: ${propstatus[0]}`)
+                            bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to <b>"Finalized:${propstatus[0]}"</b> at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
+                            filteredproposal = createdproposal.filter(e => e != proposallist)
                             break;
                     }
+                    createdproposal = filteredproposal
                 }
             } 
         }
@@ -81,15 +79,16 @@ async function main () {
             for (const proposallist of tobeexecutedprop) {
                 const proposal = await getproposalDetail(api,proposallist)
                 let exestatus = Object.getOwnPropertyNames(proposal.resultfull()['Approved'])[0]
-                if (exestatus='Executed'){
+                if (exestatus=='Executed'){
                     console.log(`Proposal ${proposallist} has been executed`)
                     bot.sendMessage(chatid, `Proposalid (${proposallist}) <b>has been executed</b> at block ${proposal.finalizedtime()+proposal.graceperiod()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                    tobeexecutedprop.pop(proposallist)
+                    tobeexecutedpropfiltered = tobeexecutedprop.filter(e => e != proposallist)
                 } else {
                     console.log(`Proposal ${proposallist} Execution is failed`)
                     bot.sendMessage(chatid, `Proposalid (${proposallist}) <b>failed to be executed</b> at block ${proposal.finalizedtime()+proposal.graceperiod()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                    tobeexecutedprop.pop(proposallist)
+                    tobeexecutedpropfiltered = tobeexecutedprop.filter(e => e != proposallist)
                 }    
+                tobeexecutedprop = tobeexecutedpropfiltered
             }
         }
     })
@@ -102,6 +101,22 @@ const getmemberHandle = async (api,memberid) => {
     return handler
 }
 
+const getproposalStatus = (propresultraw) => {
+    if (propresultraw.hasOwnProperty('proposalStatus')) {
+        return propresultraw.proposalStatus
+    } else {
+        return {Active:null}
+    }
+} 
+
+const getfinalTime = (propresultraw) => {
+    if (propresultraw.hasOwnProperty('finalizedAt')) {
+        return propresultraw.finalizedAt
+    } else {
+        return 0
+    }
+}
+
 const getproposalDetail = async (api,proposalcount) => {
     const propdetail = await api.query.proposalsEngine.proposals(proposalcount)
     const parameters = propdetail.parameters
@@ -111,11 +126,15 @@ const getproposalDetail = async (api,proposalcount) => {
     const [deftype] = Object.getOwnPropertyNames(proptype.toJSON())
     const proptitle = propdetail.title.toJSON()
     const propstage = propdetail.status.toJSON()
+    // const propstatus = propdetail.get("status")
     const propstatus = Object.getOwnPropertyNames(propstage)
-    const propresultraw = propstage[propstatus]
-    const propfinalresultfull = propresultraw.proposalStatus
-    const propfinalresultjson = Object.getOwnPropertyNames(propresultraw.proposalStatus)
-    const propfinaltime = propresultraw.finalizedAt
+    const propresultraw =  propstage[propstatus]
+    const propfinalresultfull = getproposalStatus(propresultraw)
+    // const propfinalresultfull = propresultraw.proposalStatus
+    // const propfinalresultjson = Object.getOwnPropertyNames(propresultraw.proposalStatus)
+    const propfinaltime = getfinalTime(propresultraw)
+    // const propfinaltime = propresultraw.finalizedAt
+    const propfinalresultjson = Object.getOwnPropertyNames(propfinalresultfull)
     const graceperiod = propdetail.parameters.gracePeriod.toNumber()
     return {
         detail : function () {
@@ -133,11 +152,11 @@ const getproposalDetail = async (api,proposalcount) => {
         graceperiod : function () {
             return graceperiod;
         },
-        resultjson : function () {
-            return propfinalresultjson;
-        },
         resultfull : function () {
             return propfinalresultfull;
+        },
+        resultjson : function () {
+            return propfinalresultjson;
         },
         postmessage : function () {
             return `<b>Type</b>: ${deftype}\r\n <b>Proposer</b>: ${handler}(${propposterid})\r\n <b>Title</b>: ${proptitle}\r\n <b>Stage</b>: ${propstatus}\r\n <b>Result</b>: ${JSON.stringify(propfinalresultfull)}`;
