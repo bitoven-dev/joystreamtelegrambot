@@ -16,17 +16,15 @@ async function main () {
     
     let proposalcount = (await api.query.proposalsEngine.proposalCount()).toNumber()   
     // let createdproposal = []
-    let createdproposal = (await api.query.proposalsEngine.activeProposalIds())[0]
+    let createdproposal =  ((await api.query.proposalsEngine.activeProposalIds()).toJSON())[0]
     let filteredproposal
-    let tobeexecutedprop = []
+    let tobeexecutedprop = ((await api.query.proposalsEngine.pendingExecutionProposalIds()).toJSON())[0]
     let tobeexecutedpropfiltered
    
     const unsubscribe = await api.rpc.chain.subscribeNewHeads(async (header) => {
         const block = header.number.toNumber()
-        
         const currentproposal = (await api.query.proposalsEngine.proposalCount()).toNumber()
-        console.log(`Current proposal count: ${currentproposal}`)
-        console.log(`Current active proposal : ${createdproposal}`)
+        console.log(`Current block: ${block}, Current proposal count: ${currentproposal}, Current active proposal : ${createdproposal}`)
         if (currentproposal>proposalcount) {
             for (proposalcount+1;proposalcount<currentproposal;proposalcount++) {
                 const proposal = await getproposalDetail(api,proposalcount+1)
@@ -38,7 +36,7 @@ async function main () {
             }            
         }
 
-        if (createdproposal.length>0) {
+        if (createdproposal[0]>0) {
             for (const proposallist of createdproposal){
                 const proposal = await getproposalDetail(api,proposallist)
                 let propstage = proposal.stage()[0]
@@ -58,6 +56,7 @@ async function main () {
                             break;
                         case 'Expired':
                         case 'Canceled':
+                        case 'Cancelled':
                         case 'Rejected':
                         case 'Slashed':
                         case 'Vetoed':
@@ -75,7 +74,7 @@ async function main () {
                 }
             } 
         }
-        if (tobeexecutedprop.length>0) {
+        if (tobeexecutedprop[0]>0) {
             for (const proposallist of tobeexecutedprop) {
                 const proposal = await getproposalDetail(api,proposallist)
                 let exestatus = Object.getOwnPropertyNames(proposal.resultfull()['Approved'])[0]
