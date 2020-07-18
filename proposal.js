@@ -24,7 +24,7 @@ async function main () {
     const unsubscribe = await api.rpc.chain.subscribeNewHeads(async (header) => {
         const block = header.number.toNumber()
         const currentproposal = (await api.query.proposalsEngine.proposalCount()).toNumber()
-        console.log(`Current block: ${block}, Current proposal count: ${currentproposal}, Current active proposal : ${createdproposal}`)
+        console.log(`Current block: ${block}, Current proposal count: ${currentproposal}, Current active proposal : ${createdproposal}, Current pending execution proposal : ${tobeexecutedprop}`)
         if (currentproposal>proposalcount) {
             for (proposalcount+1;proposalcount<currentproposal;proposalcount++) {
                 const proposal = await getproposalDetail(api,proposalcount+1)
