@@ -18,7 +18,7 @@ Current demo is https://t.me/jsforumnotification
    ```
 Replace `yourowntoken` on `const token = 'yourtoken';` with your Telgram bot token. You can get it by talking to @botfather 
 
-Replace `yourownchat` on `const chatid = 'yourchatid';` with your group/channel the bot will notify into. [How to get chatid](https://stackoverflow.com/questions/32423837/telegram-bot-how-to-get-a-group-chat-id)
+Replace `yourownchat` on `const chatid = 'yourchatid';` with your group/channel the bot will notify into. Bot needs to be added as admin, but it only needs to post message permission. [How to get chatid](https://stackoverflow.com/questions/32423837/telegram-bot-how-to-get-a-group-chat-id)
 
 ```
 1- Add the bot to the group.
