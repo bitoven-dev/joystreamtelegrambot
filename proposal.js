@@ -15,16 +15,19 @@ async function main () {
     })
     
     let proposalcount = (await api.query.proposalsEngine.proposalCount()).toNumber()   
-    // let createdproposal = []
-    let createdproposal =  ((await api.query.proposalsEngine.activeProposalIds()).toJSON())[0]
+    // let activeproposals = []
+    // let activeproposals =  ((await api.query.proposalsEngine.activeProposalIds()).toJSON())[0]
+    
+    let activeproposals =  await getactiveProposals(api)
     let filteredproposal
-    let tobeexecutedprop = ((await api.query.proposalsEngine.pendingExecutionProposalIds()).toJSON())[0]
+    let tobeexecutedprop = await getpendingProposals(api)
     let tobeexecutedpropfiltered
-   
+    
+
     const unsubscribe = await api.rpc.chain.subscribeNewHeads(async (header) => {
         const block = header.number.toNumber()
         const currentproposal = (await api.query.proposalsEngine.proposalCount()).toNumber()
-        console.log(`Current block: ${block}, Current proposal count: ${currentproposal}, Current active proposal : ${createdproposal}, Current pending execution proposal : ${tobeexecutedprop}`)
+        console.log(`Current block: ${block}, Current proposal count: ${currentproposal}, Current active proposal : ${activeproposals}`)
         if (currentproposal>proposalcount) {
             for (proposalcount+1;proposalcount<currentproposal;proposalcount++) {
                 const proposal = await getproposalDetail(api,proposalcount+1)
@@ -32,12 +35,12 @@ async function main () {
 
                 console.log(`New proposal (${proposalcount+1}) created at block ${propcreatedtime}.\r\n ${proposal.postmessage()}`)
                 bot.sendMessage(chatid, `New proposal (${proposalcount+1}) created at block ${propcreatedtime}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                createdproposal.push(proposalcount+1)
+                activeproposals.push(proposalcount+1)
             }            
         }
 
-        if (createdproposal[0]>0) {
-            for (const proposallist of createdproposal){
+        if (activeproposals[0]>0) {
+            for (const proposallist of activeproposals){
                 const proposal = await getproposalDetail(api,proposallist)
                 let propstage = proposal.stage()[0]
                 if (propstage == 'Finalized') {
@@ -47,11 +50,11 @@ async function main () {
                             let graceperiod = proposal.graceperiod()
                             if (graceperiod>0) {
                                 bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to "Finalized" at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                                filteredproposal = createdproposal.filter(e => e != proposallist)
+                                filteredproposal = activeproposals.filter(e => e != proposallist)
                                 tobeexecutedprop.push(proposallist)
                             } else {
                                 bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to "Finalized and Executed" at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                                filteredproposal = createdproposal.filter(e => e != proposallist)
+                                filteredproposal = activeproposals.filter(e => e != proposallist)
                             }
                             break;
                         case 'Expired':
@@ -62,15 +65,15 @@ async function main () {
                         case 'Vetoed':
                             // console.log(`Proposal ${proposallist} ${propstatus[0]}`)
                             // bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to <b>"Finalized:${propstatus[0]}"</b> at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                            // filteredproposal = createdproposal.filter(e => e != proposallist)
+                            // filteredproposal = activeproposals.filter(e => e != proposallist)
                             // break;
                         default:
                             console.log(`Proposal ${proposallist} changed to other status: ${propstatus[0]}`)
                             bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to <b>"Finalized:${propstatus[0]}"</b> at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                            filteredproposal = createdproposal.filter(e => e != proposallist)
+                            filteredproposal = activeproposals.filter(e => e != proposallist)
                             break;
                     }
-                    createdproposal = filteredproposal
+                    activeproposals = filteredproposal
                 }
             } 
         }
@@ -93,6 +96,23 @@ async function main () {
     })
 }
 
+const getpendingProposals = async (api) => {
+    let tobeexecutedprop = ((await api.query.proposalsEngine.pendingExecutionProposalIds()).toJSON())[0]
+    if (tobeexecutedprop[0]==0){
+        return []
+    } else {
+        return tobeexecutedprop
+    }
+}
+
+const getactiveProposals = async (api) => {
+    let activeproposals =  ((await api.query.proposalsEngine.activeProposalIds()).toJSON())[0]
+    if (activeproposals[0]==0){
+        return []
+    } else {
+        return activeproposals
+    }
+}
 
 const getmemberHandle = async (api,memberid) => {
     const memberprofile = await api.query.members.memberProfile(memberid)
@@ -158,7 +178,7 @@ const getproposalDetail = async (api,proposalcount) => {
             return propfinalresultjson;
         },
         postmessage : function () {
-            return `<b>Type</b>: ${deftype}\r\n <b>Proposer</b>: ${handler}(${propposterid})\r\n <b>Title</b>: ${proptitle}\r\n <b>Stage</b>: ${propstatus}\r\n <b>Result</b>: ${JSON.stringify(propfinalresultfull)}`;
+            return `<b>Type</b>: ${deftype}\r\n <b>Proposer</b>:<a href="https://testnet.joystream.org/#/members/${handler}"> ${handler}(${propposterid})</a>\r\n <b>Title</b>: <a href="https://testnet.joystream.org/#/proposals/${proposalcount}">${proptitle.substring(0,100)}</a>\r\n <b>Stage</b>: ${propstatus}\r\n <b>Result</b>: ${JSON.stringify(propfinalresultfull)}`;
         // postmessage : function () {
         //     return `<b>Type</b>: ${this.deftype()}\r\n <b>Proposer</b>: ${this.handler()}(${this.posterid()})\r\n <b>Title</b>: ${this.title()}\r\n <b>Stage</b>: ${this.stage()}\r\n <b>Result</b>: ${this.result()}`;
         }
