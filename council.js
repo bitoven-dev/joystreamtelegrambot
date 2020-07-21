@@ -24,13 +24,12 @@ async function main () {
         const votingperiod = (await api.query.councilElection.votingPeriod()).toNumber()
         const revealingperiod = (await api.query.councilElection.revealingPeriod()).toNumber()
         const councilstage = await getcouncilStage(api)
-        const councilperiod = (await api.query.councilElection.newTermDuration()).toNumber()  
-
+        const councilperiod = (await api.query.councilElection.newTermDuration()).toNumber()        
         switch (councilstage){
             case null:
                 console.log('Council has been elected')
                 if (block>lastcouncilnotif){
-                    bot.sendMessage(chatid, `New council for round ${councilround} has been elected at block ${councilendterm-councilperiod}.`, { parse_mode: 'html' })
+                    bot.sendMessage(chatid, `<a href="https://testnet.joystream.org/#/council/members"> New council for round ${councilround}</a> has been elected at block ${councilendterm-councilperiod}.`, { parse_mode: 'html' })
                     lastcouncilnotif=councilendterm
                 }
                 break;
@@ -42,21 +41,21 @@ async function main () {
                 if (annstage>0) {
                     console.log('Announcing Stage')
                     if (block>lastcouncilnotif){
-                        bot.sendMessage(chatid, `New council election for round ${councilround} has been started at block ${annstage-annperiod}. You can apply now!`, { parse_mode: 'html' })
+                        bot.sendMessage(chatid, `New council election for round ${councilround} has been started at block ${annstage-annperiod}.<a href="https://testnet.joystream.org/#/council/applicants"> You can apply now!</a>`, { parse_mode: 'html' })
                         lastcouncilnotif=annstage
                     }
                 }
                 if (votingstage>0) {
                     console.log('Voting Stage')
                     if (block>lastcouncilnotif){
-                        bot.sendMessage(chatid, `Voting stage for council election has been started at block ${votingstage-votingperiod}. You can vote now!`, { parse_mode: 'html' })
+                        bot.sendMessage(chatid, `Voting stage for council election has been started at block ${votingstage-votingperiod}. <a href="https://testnet.joystream.org/#/council/applicants">You can vote now!</a>`, { parse_mode: 'html' })
                         lastcouncilnotif=votingstage
                     }
                 }
                 if (revealingstage>0) {
                     console.log('Revealing Stage')
                     if (block>lastcouncilnotif){
-                        bot.sendMessage(chatid, `Revealing stage for council election has been started at block ${revealingstage-revealingperiod}. Don't forget to reveal your vote!`, { parse_mode: 'html' })
+                        bot.sendMessage(chatid, `Revealing stage for council election has been started at block ${revealingstage-revealingperiod}. <a href="https://testnet.joystream.org/#/council/votes">Don't forget to reveal your vote!</a>`, { parse_mode: 'html' })
                         lastcouncilnotif=revealingstage
                     }
                 }       
