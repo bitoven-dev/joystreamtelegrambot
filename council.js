@@ -18,15 +18,16 @@ async function main () {
 
     const unsubscribe = await api.rpc.chain.subscribeNewHeads(async (header) => {
         const block = header.number.toNumber()
-        const councilround = await api.query.councilElection.round()
-        const councilendterm = (await api.query.council.termEndsAt()).toNumber()
-        const annperiod = (await api.query.councilElection.announcingPeriod()).toNumber()
-        const votingperiod = (await api.query.councilElection.votingPeriod()).toNumber()
-        const revealingperiod = (await api.query.councilElection.revealingPeriod()).toNumber()
-        const councilstage = await getcouncilStage(api)
-        const councilperiod = (await api.query.councilElection.newTermDuration()).toNumber() 
+        
         console.log(`Current block ${block}`)        
         if (block>lastcouncilnotif) {
+            const councilround = await api.query.councilElection.round()
+            const councilendterm = (await api.query.council.termEndsAt()).toNumber()
+            const annperiod = (await api.query.councilElection.announcingPeriod()).toNumber()
+            const votingperiod = (await api.query.councilElection.votingPeriod()).toNumber()
+            const revealingperiod = (await api.query.councilElection.revealingPeriod()).toNumber()
+            const councilstage = await getcouncilStage(api)
+            const councilperiod = (await api.query.councilElection.newTermDuration()).toNumber() 
             switch (councilstage){
                 case null:
                     console.log('Council has been elected')
