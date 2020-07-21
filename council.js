@@ -30,7 +30,7 @@ async function main () {
             case null:
                 console.log('Council has been elected')
                 if (block>lastcouncilnotif){
-                    bot.sendMessage(chatid, `New council has been elected at block ${councilendterm-councilperiod}.`, { parse_mode: 'html' })
+                    bot.sendMessage(chatid, `New council for round ${councilround} has been elected at block ${councilendterm-councilperiod}.`, { parse_mode: 'html' })
                     lastcouncilnotif=councilendterm
                 }
                 break;
