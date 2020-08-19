@@ -15,9 +15,6 @@ async function main () {
     })
     
     let proposalcount = (await api.query.proposalsEngine.proposalCount()).toNumber()   
-    // let activeproposals = []
-    // let activeproposals =  ((await api.query.proposalsEngine.activeProposalIds()).toJSON())[0]
-    
     let activeproposals =  await getactiveProposals(api)
     let filteredproposal
     let tobeexecutedprop = await getpendingProposals(api)
@@ -27,7 +24,7 @@ async function main () {
     const unsubscribe = await api.rpc.chain.subscribeNewHeads(async (header) => {
         const block = header.number.toNumber()
         const currentproposal = (await api.query.proposalsEngine.proposalCount()).toNumber()
-        console.log(`Current block: ${block}, Current proposal count: ${currentproposal}, Current active proposal : ${activeproposals}`)
+        console.log(`Current block: ${block}, Current proposal count: ${currentproposal}, Current active proposal : ${activeproposals}, Current pending proposal: ${tobeexecutedprop}`)
         if (currentproposal>proposalcount) {
             for (proposalcount+1;proposalcount<currentproposal;proposalcount++) {
                 const proposal = await getproposalDetail(api,proposalcount+1)
@@ -63,10 +60,6 @@ async function main () {
                         case 'Rejected':
                         case 'Slashed':
                         case 'Vetoed':
-                            // console.log(`Proposal ${proposallist} ${propstatus[0]}`)
-                            // bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to <b>"Finalized:${propstatus[0]}"</b> at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                            // filteredproposal = activeproposals.filter(e => e != proposallist)
-                            // break;
                         default:
                             console.log(`Proposal ${proposallist} changed to other status: ${propstatus[0]}`)
                             bot.sendMessage(chatid, `Proposalid (${proposallist}) status changed to <b>"Finalized:${propstatus[0]}"</b> at block ${proposal.finalizedtime()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
@@ -80,16 +73,27 @@ async function main () {
         if (tobeexecutedprop[0]>0) {
             for (const proposallist of tobeexecutedprop) {
                 const proposal = await getproposalDetail(api,proposallist)
-                let exestatus = Object.getOwnPropertyNames(proposal.resultfull()['Approved'])[0]
-                if (exestatus=='Executed'){
-                    console.log(`Proposal ${proposallist} has been executed`)
-                    bot.sendMessage(chatid, `Proposalid (${proposallist}) <b>has been executed</b> at block ${proposal.finalizedtime()+proposal.graceperiod()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                    tobeexecutedpropfiltered = tobeexecutedprop.filter(e => e != proposallist)
-                } else {
-                    console.log(`Proposal ${proposallist} Execution is failed`)
-                    bot.sendMessage(chatid, `Proposalid (${proposallist}) <b>failed to be executed</b> at block ${proposal.finalizedtime()+proposal.graceperiod()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
-                    tobeexecutedpropfiltered = tobeexecutedprop.filter(e => e != proposallist)
-                }    
+                let exestatus = proposal.exestatus()
+                switch (exestatus){
+                    case 'PendingExecution':
+                        tobeexecutedpropfiltered = tobeexecutedprop
+                        break; 
+                    case 'Executed':
+                        console.log(`Proposal ${proposallist} has been executed`)
+                        bot.sendMessage(chatid, `Proposalid (${proposallist}) <b>has been executed</b> at block ${proposal.finalizedtime()+proposal.graceperiod()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
+                        tobeexecutedpropfiltered = tobeexecutedprop.filter(e => e != proposallist)
+                        break;
+                    case 'ExecutionFailed':
+                        console.log(`Proposal ${proposallist} Execution is failed`)
+                        bot.sendMessage(chatid, `Proposalid (${proposallist}) <b>failed to get executed</b> at block ${proposal.finalizedtime()+proposal.graceperiod()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
+                        tobeexecutedpropfiltered = tobeexecutedprop.filter(e => e != proposallist)
+                        break;
+                    default:
+                        console.log(`Proposal ${proposallist} has been ${exestatus}`)
+                        bot.sendMessage(chatid, `Proposalid (${proposallist}): <b>${exestatus}</b> at block ${proposal.finalizedtime()+proposal.graceperiod()}.\r\n ${proposal.postmessage()}`, { parse_mode: 'html' })
+                        tobeexecutedpropfiltered = tobeexecutedprop.filter(e => e != proposallist)
+                        break;
+                }
                 tobeexecutedprop = tobeexecutedpropfiltered
             }
         }
@@ -143,17 +147,19 @@ const getproposalDetail = async (api,proposalcount) => {
     const handler = await getmemberHandle(api,propposterid)
     const proptype = await api.query.proposalsCodex.proposalDetailsByProposalId(proposalcount)
     const [deftype] = Object.getOwnPropertyNames(proptype.toJSON())
-    const proptitle = propdetail.title.toJSON()
+    // const proptitle = propdetail.title.toJSON()
+    const proptitle = propdetail.get('title')
     const propstage = propdetail.status.toJSON()
     // const propstatus = propdetail.get("status")
     const propstatus = Object.getOwnPropertyNames(propstage)
     const propresultraw =  propstage[propstatus]
     const propfinalresultfull = getproposalStatus(propresultraw)
+    const propfinalresultjson = Object.getOwnPropertyNames(propfinalresultfull)
     // const propfinalresultfull = propresultraw.proposalStatus
     // const propfinalresultjson = Object.getOwnPropertyNames(propresultraw.proposalStatus)
     const propfinaltime = getfinalTime(propresultraw)
     // const propfinaltime = propresultraw.finalizedAt
-    const propfinalresultjson = Object.getOwnPropertyNames(propfinalresultfull)
+    const exestatus = Object.getOwnPropertyNames(propfinalresultfull['Approved'])[0]
     const graceperiod = propdetail.parameters.gracePeriod.toNumber()
     return {
         detail : function () {
@@ -177,8 +183,11 @@ const getproposalDetail = async (api,proposalcount) => {
         resultjson : function () {
             return propfinalresultjson;
         },
+        exestatus : function () {
+            return exestatus;
+        },
         postmessage : function () {
-            return `<b>Type</b>: ${deftype}\r\n <b>Proposer</b>:<a href="https://testnet.joystream.org/#/members/${handler}"> ${handler}(${propposterid})</a>\r\n <b>Title</b>: <a href="https://testnet.joystream.org/#/proposals/${proposalcount}">${proptitle.substring(0,100)}</a>\r\n <b>Stage</b>: ${propstatus}\r\n <b>Result</b>: ${JSON.stringify(propfinalresultfull)}`;
+            return `<b>Type</b>: ${deftype}\r\n <b>Proposer</b>:<a href="https://testnet.joystream.org/#/members/${handler}"> ${handler}(${propposterid})</a>\r\n <b>Title</b>: <a href="https://testnet.joystream.org/#/proposals/${proposalcount}">${proptitle.substring(0,100)}</a>\r\n <b>Stage</b>: ${propstatus}\r\n <b>Result</b>: ${exestatus}`;
         // postmessage : function () {
         //     return `<b>Type</b>: ${this.deftype()}\r\n <b>Proposer</b>: ${this.handler()}(${this.posterid()})\r\n <b>Title</b>: ${this.title()}\r\n <b>Stage</b>: ${this.stage()}\r\n <b>Result</b>: ${this.result()}`;
         }
